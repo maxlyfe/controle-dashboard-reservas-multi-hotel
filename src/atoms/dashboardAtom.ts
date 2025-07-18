@@ -77,7 +77,9 @@ export const hotelsAtom = atom<Hotel[]>([]);
 export const dashboardDataAtom = atom<MonthlyData[]>([]);
 export const salesDetailsAtom = atom<SalesDetail[]>([]);
 export const hotelGoalsAtom = atom<HotelGoal[]>([]);
-export const lastYearSalesDetailsAtom = atom<SalesDetail | null>(null);
+// CORREÇÃO: Adicionando 'export' que estava faltando
+export const lastYearSalesDetailsForSelectedHotelAtom = atom<SalesDetail | null>(null);
+export const lastYearSalesDetailsForAllHotelsAtom = atom<SalesDetail[]>([]);
 
 
 // --- Atoms Derivados ---
@@ -91,7 +93,7 @@ export const currentMonthBaseDataAtom = atom(
   }
 );
 
-const currentMonthAllDetailsAtom = atom(
+export const currentMonthAllDetailsAtom = atom(
   (get) => {
     const baseData = get(currentMonthBaseDataAtom);
     const allDetails = get(salesDetailsAtom);
@@ -148,69 +150,6 @@ export const currentHotelGoalAtom = atom(
   }
 );
 
-export const salesRankAtom = atom((get) => {
-    const details = get(currentHotelDetailsAtom);
-    if (!details) return [];
-
-    const channels = [
-        { name: 'Recepção/Balcão', value: details.siteRecepcaoBalcao },
-        { name: 'Evento', value: details.centralEvents },
-        { name: 'Day Use', value: details.centralDayUse },
-        { name: 'Vendas Central', value: details.centralSales },
-        { name: 'Grupo', value: details.centralPackages },
-        { name: 'Booking', value: details.bookingSales },
-        { name: 'HotelBeds', value: details.hotelBedsSales },
-        { name: 'Keytel', value: details.keytelSales },
-        { name: 'Expedia', value: details.expediaSales },
-        { name: 'Decolar', value: details.airbnbSales },
-        { name: 'Tourmerd', value: details.tourmerdSales },
-        { name: 'Planisfério', value: details.planisferioSales },
-        { name: 'Itaparica', value: details.itaparicaSales },
-        { name: 'Outros', value: details.otherOtaSales },
-    ];
-
-    return channels
-        .filter(channel => (channel.value ?? 0) > 0)
-        .sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
-});
-
-export const growthObjectivesAtom = atom((get) => {
-    const currentDetails = get(currentHotelDetailsAtom);
-    const lastYearDetails = get(lastYearSalesDetailsAtom);
-
-    if (!lastYearDetails) {
-        return { status: 'no_data', message: "Informe as vendas do ano anterior para calcular este objetivo." };
-    }
-
-    const currentCentralSales = currentDetails?.centralSales ?? 0;
-    const lastYearCentralSales = lastYearDetails?.centralSales ?? 0;
-
-    if (lastYearCentralSales <= 0) {
-        return { status: 'no_data', message: "Sem vendas no ano anterior para comparar." };
-    }
-    
-    const growth = (currentCentralSales - lastYearCentralSales) / lastYearCentralSales;
-
-    if (growth > 0.20) {
-        return {
-            status: 'achieved_obj3',
-            prize: currentCentralSales * 0.03,
-            growth,
-        };
-    }
-    
-    if (growth > 0.10) {
-        return {
-            status: 'achieved_obj2',
-            prize: currentCentralSales * 0.02,
-            growth,
-        };
-    }
-
-    return { status: 'not_achieved', growth };
-});
-
-
 // --- Helper Functions ---
 const createEmptySalesDetail = (monthlyDataId: string, hotelId: string): SalesDetail => ({
   monthlyDataId, hotelId, siteReservations: 0, siteRecepcaoBalcao: 0, centralSales: 0, centralPackages: 0,
@@ -221,6 +160,42 @@ const createEmptySalesDetail = (monthlyDataId: string, hotelId: string): SalesDe
   keytelQuantity: 0, planisferioQuantity: 0, expedaQuantity: 0, itaparicaQuantity: 0, otherOtaQuantity: 0,
   centralSalesQuantity: 0, centralPackagesQuantity: 0, siteRecepcaoBalcaoQuantity: 0,
   centralEventsQuantity: 0, centralDayUseQuantity: 0,
+});
+
+const mapSalesDetailFromDb = (detail: any): SalesDetail => ({
+    id: detail.id,
+    monthlyDataId: detail.monthly_data_id,
+    hotelId: detail.hotel_id,
+    siteReservations: parseFloat(detail.site_reservations) || 0,
+    siteRecepcaoBalcao: parseFloat(detail.site_recepcao_balcao) || 0,
+    centralSales: parseFloat(detail.central_sales) || 0,
+    centralPackages: parseFloat(detail.central_packages) || 0,
+    centralDayUse: parseFloat(detail.central_day_use) || 0,
+    centralEvents: parseFloat(detail.central_events) || 0,
+    bookingSales: parseFloat(detail.booking_sales) || 0,
+    airbnbSales: parseFloat(detail.airbnb_sales) || 0,
+    expediaSales: parseFloat(detail.expedia_sales) || 0,
+    hotelBedsSales: parseFloat(detail.hotelbeds_sales) || 0,
+    otherOtaSales: parseFloat(detail.other_ota_sales) || 0,
+    tourmerdSales: parseFloat(detail.tourmerd_sales) || 0,
+    keytelSales: parseFloat(detail.keytel_sales) || 0,
+    planisferioSales: parseFloat(detail.planisferio_sales) || 0,
+    itaparicaSales: parseFloat(detail.itaparica_sales) || 0,
+    bookingQuantity: detail.booking_quantity ?? 0,
+    decolaQuantity: detail.decolar_quantity ?? 0,
+    hotelbedsQuantity: detail.hotelbeds_quantity ?? 0,
+    tourmerdQuantity: detail.tourmerd_quantity ?? 0,
+    keytelQuantity: detail.keytel_quantity ?? 0,
+    planisferioQuantity: detail.planisferio_quantity ?? 0,
+    expedaQuantity: detail.expedia_quantity ?? 0,
+    itaparicaQuantity: detail.itaparica_quantity ?? 0,
+    otherOtaQuantity: detail.other_ota_quantity ?? 0,
+    centralSalesQuantity: detail.central_sales_quantity ?? 0,
+    centralPackagesQuantity: detail.central_packages_quantity ?? 0,
+    siteRecepcaoBalcaoQuantity: detail.site_recepcao_balcao_quantity ?? 0,
+    centralEventsQuantity: detail.central_events_quantity ?? 0,
+    centralDayUseQuantity: detail.central_day_use_quantity ?? 0,
+    hotel: detail.hotel ? { id: detail.hotel.id, name: detail.hotel.name, location: detail.hotel.location } : undefined
 });
 
 // --- Database Interaction Functions ---
@@ -236,49 +211,13 @@ export const loadDashboardData = async (): Promise<MonthlyData[]> => {
   return (data || []).map(item => ({ id: item.id, month: item.month, year: item.year }));
 };
 
-// FUNÇÃO CORRIGIDA PARA CONVERTER STRINGS EM NÚMEROS
 export const loadSalesDetails = async (): Promise<SalesDetail[]> => {
   const { data, error } = await supabase.from('sales_details').select('*, hotel:hotel_id(id, name, location)');
   if (error) throw error;
-  return (data || []).map(item => ({
-    id: item.id,
-    monthlyDataId: item.monthly_data_id,
-    hotelId: item.hotel_id,
-    siteReservations: parseFloat(item.site_reservations) || 0,
-    siteRecepcaoBalcao: parseFloat(item.site_recepcao_balcao) || 0,
-    centralSales: parseFloat(item.central_sales) || 0,
-    centralPackages: parseFloat(item.central_packages) || 0,
-    centralDayUse: parseFloat(item.central_day_use) || 0,
-    centralEvents: parseFloat(item.central_events) || 0,
-    bookingSales: parseFloat(item.booking_sales) || 0,
-    airbnbSales: parseFloat(item.airbnb_sales) || 0,
-    expediaSales: parseFloat(item.expedia_sales) || 0,
-    hotelBedsSales: parseFloat(item.hotelbeds_sales) || 0,
-    otherOtaSales: parseFloat(item.other_ota_sales) || 0,
-    tourmerdSales: parseFloat(item.tourmerd_sales) || 0,
-    keytelSales: parseFloat(item.keytel_sales) || 0,
-    planisferioSales: parseFloat(item.planisferio_sales) || 0,
-    itaparicaSales: parseFloat(item.itaparica_sales) || 0,
-    bookingQuantity: item.booking_quantity ?? 0,
-    decolaQuantity: item.decolar_quantity ?? 0,
-    hotelbedsQuantity: item.hotelbeds_quantity ?? 0,
-    tourmerdQuantity: item.tourmerd_quantity ?? 0,
-    keytelQuantity: item.keytel_quantity ?? 0,
-    planisferioQuantity: item.planisferio_quantity ?? 0,
-    expedaQuantity: item.expedia_quantity ?? 0,
-    itaparicaQuantity: item.itaparica_quantity ?? 0,
-    otherOtaQuantity: item.other_ota_quantity ?? 0,
-    centralSalesQuantity: item.central_sales_quantity ?? 0,
-    centralPackagesQuantity: item.central_packages_quantity ?? 0,
-    siteRecepcaoBalcaoQuantity: item.site_recepcao_balcao_quantity ?? 0,
-    centralEventsQuantity: item.central_events_quantity ?? 0,
-    centralDayUseQuantity: item.central_day_use_quantity ?? 0,
-    hotel: item.hotel ? { id: item.hotel.id, name: item.hotel.name, location: item.hotel.location } : undefined
-  }));
+  return (data || []).map(mapSalesDetailFromDb);
 };
 
-// FUNÇÃO CORRIGIDA PARA CONVERTER STRINGS EM NÚMEROS
-export const loadLastYearSalesDetail = async (month: number, year: number, hotelId: string): Promise<SalesDetail | null> => {
+export const loadLastYearSalesDetailsForAllHotels = async (month: number, year: number): Promise<SalesDetail[]> => {
     const { data: lastYearMonthData } = await supabase
         .from('monthly_data')
         .select('id')
@@ -286,51 +225,16 @@ export const loadLastYearSalesDetail = async (month: number, year: number, hotel
         .eq('year', year - 1)
         .maybeSingle();
 
-    if (!lastYearMonthData) return null;
+    if (!lastYearMonthData) return [];
 
-    const { data: detail } = await supabase
+    const { data: lastYearDetails } = await supabase
         .from('sales_details')
         .select('*')
-        .eq('monthly_data_id', lastYearMonthData.id)
-        .eq('hotel_id', hotelId)
-        .maybeSingle();
+        .eq('monthly_data_id', lastYearMonthData.id);
 
-    if (!detail) return null;
-
-    return {
-        id: detail.id,
-        monthlyDataId: detail.monthly_data_id,
-        hotelId: detail.hotel_id,
-        siteReservations: parseFloat(detail.site_reservations) || 0,
-        siteRecepcaoBalcao: parseFloat(detail.site_recepcao_balcao) || 0,
-        centralSales: parseFloat(detail.central_sales) || 0,
-        centralPackages: parseFloat(detail.central_packages) || 0,
-        centralDayUse: parseFloat(detail.central_day_use) || 0,
-        centralEvents: parseFloat(detail.central_events) || 0,
-        bookingSales: parseFloat(detail.booking_sales) || 0,
-        airbnbSales: parseFloat(detail.airbnb_sales) || 0,
-        expediaSales: parseFloat(detail.expedia_sales) || 0,
-        hotelBedsSales: parseFloat(detail.hotelbeds_sales) || 0,
-        otherOtaSales: parseFloat(detail.other_ota_sales) || 0,
-        tourmerdSales: parseFloat(detail.tourmerd_sales) || 0,
-        keytelSales: parseFloat(detail.keytel_sales) || 0,
-        planisferioSales: parseFloat(detail.planisferio_sales) || 0,
-        itaparicaSales: parseFloat(detail.itaparica_sales) || 0,
-        bookingQuantity: detail.booking_quantity ?? 0,
-        decolaQuantity: detail.decolar_quantity ?? 0,
-        hotelbedsQuantity: detail.hotelbeds_quantity ?? 0,
-        tourmerdQuantity: detail.tourmerd_quantity ?? 0,
-        keytelQuantity: detail.keytel_quantity ?? 0,
-        planisferioQuantity: detail.planisferio_quantity ?? 0,
-        expedaQuantity: detail.expedia_quantity ?? 0,
-        itaparicaQuantity: detail.itaparica_quantity ?? 0,
-        otherOtaQuantity: detail.other_ota_quantity ?? 0,
-        centralSalesQuantity: detail.central_sales_quantity ?? 0,
-        centralPackagesQuantity: detail.central_packages_quantity ?? 0,
-        siteRecepcaoBalcaoQuantity: detail.site_recepcao_balcao_quantity ?? 0,
-        centralEventsQuantity: detail.central_events_quantity ?? 0,
-        centralDayUseQuantity: detail.central_day_use_quantity ?? 0,
-    };
+    if (!lastYearDetails) return [];
+    
+    return lastYearDetails.map(mapSalesDetailFromDb);
 };
 
 export const loadHotelGoals = async (): Promise<HotelGoal[]> => {
@@ -339,6 +243,7 @@ export const loadHotelGoals = async (): Promise<HotelGoal[]> => {
   return (data || []).map(item => ({ id: item.id, hotelId: item.hotel_id, month: item.month, year: item.year, goal: item.goal ?? 0 }));
 };
 
+// ... (restante do arquivo sem alterações: findOrCreateMonthData, ensureRelatedRecordsExist, updateSalesDetail, upsertHotelGoal)
 export const findOrCreateMonthData = async (month: number, year: number): Promise<MonthlyData> => {
   let { data: monthData, error: findError } = await supabase
     .from('monthly_data')

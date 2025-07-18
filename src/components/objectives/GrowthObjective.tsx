@@ -1,9 +1,48 @@
 import { useAtom } from 'jotai';
-import { growthObjectivesAtom } from '../../atoms/dashboardAtom';
+import { lastYearSalesDetailsForSelectedHotelAtom, currentHotelDetailsAtom, SalesDetail, lastYearSalesDetailsForAllHotelsAtom } from '../../atoms/dashboardAtom';
 import { TrendingUp, AlertTriangle, Gift } from 'lucide-react';
 
-const GrowthObjective = () => {
-  const [objectiveData] = useAtom(growthObjectivesAtom);
+
+const calculateGrowth = (currentDetails: SalesDetail | null, lastYearDetails: SalesDetail | null) => {
+    if (!lastYearDetails) {
+        return { status: 'no_data', message: "Informe as vendas do ano anterior para calcular este objetivo." };
+    }
+
+    const currentCentralSales = currentDetails?.centralSales ?? 0;
+    const lastYearCentralSales = lastYearDetails?.centralSales ?? 0;
+
+    if (lastYearCentralSales <= 0) {
+        return { status: 'no_data', message: "Sem vendas no ano anterior para comparar." };
+    }
+    
+    const growth = (currentCentralSales - lastYearCentralSales) / lastYearCentralSales;
+
+    if (growth > 0.20) {
+        return { status: 'achieved_obj3', prize: currentCentralSales * 0.03, growth };
+    }
+    
+    if (growth > 0.10) {
+        return { status: 'achieved_obj2', prize: currentCentralSales * 0.02, growth };
+    }
+
+    return { status: 'not_achieved', growth };
+};
+
+
+const GrowthObjective = ({ details: detailsFromProps }: { details?: SalesDetail | null }) => {
+  const [currentDetailsFromAtom] = useAtom(currentHotelDetailsAtom);
+  const [lastYearDetailsForSelectedHotel] = useAtom(lastYearSalesDetailsForSelectedHotelAtom);
+  const [lastYearDetailsForAll] = useAtom(lastYearSalesDetailsForAllHotelsAtom);
+
+  const currentDetails = detailsFromProps !== undefined ? detailsFromProps : currentDetailsFromAtom;
+  
+  // Na visão de grupo, busca o dado do hotel específico na lista.
+  // Na visão individual, usa o dado já carregado para o hotel selecionado.
+  const lastYearDetails = detailsFromProps 
+    ? lastYearDetailsForAll.find(d => d.hotelId === detailsFromProps.hotelId)
+    : lastYearDetailsForSelectedHotel;
+
+  const objectiveData = calculateGrowth(currentDetails, lastYearDetails || null);
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   const formatPercentage = (value: number) => `${(value * 100).toFixed(1)}%`;

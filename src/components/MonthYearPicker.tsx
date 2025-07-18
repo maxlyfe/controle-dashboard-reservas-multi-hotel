@@ -44,6 +44,7 @@ const MonthYearPicker = () => {
   };
 
   return (
+    // Adicionada a classe 'relative' para que o z-index funcione corretamente no menu suspenso
     <div className="relative">
       <div className="flex items-center space-x-2">
         <button
@@ -71,8 +72,9 @@ const MonthYearPicker = () => {
         </button>
       </div>
       
+      {/* CORREÇÃO: Adicionada a classe z-20 para colocar o menu na frente de outros elementos */}
       {isOpen && (
-        <div className="absolute left-0 mt-2 w-60 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 divide-y divide-gray-100">
+        <div className="absolute left-0 mt-2 w-60 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 divide-y divide-gray-100 z-20">
           <div className="py-2">
             <div className="px-4 py-2 text-sm font-medium text-gray-700">
               Selecione o mês
